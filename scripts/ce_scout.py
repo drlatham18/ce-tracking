@@ -29,7 +29,7 @@ from urllib.parse import urlencode
 import anthropic
 import requests
 
-# ── Config ────────────────────────────────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────────────────────
 
 ANTHROPIC_KEY  = os.environ.get('ANTHROPIC_API_KEY', '')
 BRAVE_KEY      = os.environ.get('BRAVE_API_KEY', '')
@@ -41,7 +41,7 @@ TRACKER_BASE   = os.environ.get('TRACKER_URL', 'https://drlatham18.github.io/ce-
 REPO_ROOT    = os.path.join(os.path.dirname(__file__), '..')
 CE_DATA_PATH = os.path.join(REPO_ROOT, 'ce-data.json')
 
-# ── Requirements (mirrors index.html) ─────────────────────────────────────────────────────────
+# ── Requirements (mirrors index.html) ─────────────────────────────────────────────────────────────────────────
 
 TN_START = '2026-08-01'
 TN_END   = '2028-08-31'
@@ -55,7 +55,7 @@ CAT_LABELS = {
     'consultation': 'Consultation', 'other': 'Other',
 }
 
-# ── CE Data & Gap Computation ──────────────────────────────────────────────────────────
+# ── CE Data & Gap Computation ────────────────────────────────────────────────────────────────────────
 
 def load_ce_data():
     if not os.path.exists(CE_DATA_PATH):
@@ -98,7 +98,7 @@ def compute_gaps(data):
         },
     }
 
-# ── Web Search ────────────────────────────────────────────────────────────────────────────────
+# ── Web Search ──────────────────────────────────────────────────────────────────────────────────
 
 def brave_search(query, count=8):
     try:
@@ -138,7 +138,7 @@ def build_search_queries(gaps):
             queries['ethics_extra'] = 'professional ethics counseling CEU 3 6 hours NBCC approved online LPC'
     return queries
 
-# ── Claude Analysis ─────────────────────────────────────────────────────────────────────────────
+# ── Claude Analysis ─────────────────────────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """
 You are a CE compliance specialist for a licensed therapist in Tennessee (LPC/MHSP) and Colorado (LPC).
@@ -216,13 +216,14 @@ def analyze_with_claude(search_results, gaps, today_str):
         system=SYSTEM_PROMPT,
         messages=[{'role': 'user', 'content': user_msg}],
     )
-    raw = msg.content[0].text.strip()
+    # content may include ThinkingBlock(s) before the TextBlock; find the first text block
+    raw = next(block.text for block in msg.content if hasattr(block, 'text')).strip()
     raw = re.sub(r'^```(?:json)?\s*', '', raw)
     raw = re.sub(r'\s*```$', '', raw)
     result = json.loads(raw)
     return result if isinstance(result, list) else []
 
-# ── Email Builder ─────────────────────────────────────────────────────────────────────────────
+# ── Email Builder ────────────────────────────────────────────────────────────────────────────────────
 
 def log_url(c):
     params = {
@@ -345,8 +346,8 @@ def build_email(courses, gaps, today_str):
         tn_year_row = (
             f'<tr><td colspan="3" style="font-size:10px;color:#555;padding:4px 0 0">'
             f'Per year (need ≥10 each) — '
-            f'2026: {tn["by_year"][2026]}h &nbsp;·&nbsp; '
-            f'2027: {tn["by_year"][2027]}h &nbsp;·&nbsp; '
+            f'2026: {tn["by_year"][2026]}h &nbsp;&middot;&nbsp; '
+            f'2027: {tn["by_year"][2027]}h &nbsp;&middot;&nbsp; '
             f'2028: {tn["by_year"][2028]}h</td></tr>'
         )
         co_bars = pbar_row('Total', co['total'], 40) + pbar_row('Ethics', co['ethics'], 6)
@@ -419,18 +420,18 @@ def build_email(courses, gaps, today_str):
     {inperson_section}
 
     <div style="border-top:1px solid #e0e3e8;margin-top:20px;padding-top:14px;font-size:11px;color:#9ca3af;line-height:1.7">
-      <strong>Log a completed CE:</strong> Click “+ Log in Tracker” — your tracker opens with the form pre-filled.
+      <strong>Log a completed CE:</strong> Click "+ Log in Tracker" — your tracker opens with the form pre-filled.
       Enter the completion date, confirm which states apply, and save.<br>
       <strong>Update gap analysis:</strong> Export JSON from tracker → rename to <code>ce-data.json</code> →
       commit to the <a href="https://github.com/drlatham18/ce-tracking" style="color:#2563eb;text-decoration:none">ce-tracking repo</a>.<br>
-      TN cycle ends Aug 2028 &nbsp;·&nbsp; <strong style="color:#dc2626">CO cycle ends Jun 30, 2027</strong>
+      TN cycle ends Aug 2028 &nbsp;&middot;&nbsp; <strong style="color:#dc2626">CO cycle ends Jun 30, 2027</strong>
     </div>
   </div>
 </div>
 </body>
 </html>"""
 
-# ── Send Email ─────────────────────────────────────────────────────────────────────────────
+# ── Send Email ───────────────────────────────────────────────────────────────────────────────────
 
 def send_email(html_body, subject):
     msg = MIMEMultipart('alternative')
@@ -455,7 +456,7 @@ def send_error_email(tb):
     except Exception:
         pass
 
-# ── Main ──────────────────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────────────────────
 
 def main():
     today_str = date.today().isoformat()
