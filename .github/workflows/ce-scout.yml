@@ -1,0 +1,78 @@
+name: CE Scout — Weekly Report
+
+# Runs every Monday at 9 AM Eastern (14:00 UTC, accounting for ET = UTC-5)
+# Also triggerable manually: GitHub repo → Actions tab → CE Scout → Run workflow
+on:
+  schedule:
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+
+jobs:
+  ce-scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic requests
+
+      - name: Run CE Scout
+        run: python scripts/ce_scout.py
+        env:
+          ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+          BRAVE_API_KEY:      ${{ secrets.BRAVE_API_KEY }}
+          GMAIL_USER:         ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAIL:    ${{ secrets.RECIPIENT_EMAIL }}
+          TRACKER_URL:        ${{ secrets.TRACKER_URL }}
+
+# ───────────────────────────────────────────────────────────────────────────
+# ONE-TIME SETUP (5-10 minutes)
+# ───────────────────────────────────────────────────────────────────────────
+#
+# 1. GITHUB SECRETS
+#    Repo → Settings → Secrets and variables → Actions → New repository secret
+#    Add each of these:
+#
+#    ANTHROPIC_API_KEY
+#      Get from: console.anthropic.com → API Keys → Create Key
+#      Cost: ~$0.02–0.05 per weekly run (Sonnet 5)
+#
+#    BRAVE_API_KEY
+#      Get from: api.search.brave.com → Sign up → Free plan → Create key
+#      Free tier: 2,000 queries/month (script uses ~10/week)
+#
+#    GMAIL_USER
+#      Your full Gmail address, e.g. yourname@gmail.com
+#
+#    GMAIL_APP_PASSWORD
+#      Google Account → Security → 2-Step Verification must be ON, then:
+#      Security → App passwords → Select app: Mail → Generate
+#      Paste the 16-character password (no spaces)
+#
+#    RECIPIENT_EMAIL
+#      Where to receive the weekly report (can be same as GMAIL_USER)
+#
+#    TRACKER_URL
+#      Your GitHub Pages URL: https://drlatham18.github.io/ce-tracking
+#      (Enable Pages: repo → Settings → Pages → Source: Deploy from branch → master / root)
+#
+# 2. ENABLE GITHUB PAGES (so email links open the tracker)
+#    Repo → Settings → Pages
+#    Source: Deploy from a branch
+#    Branch: master   Folder: / (root)
+#    Save → wait ~1 minute → visit https://drlatham18.github.io/ce-tracking/
+#
+# 3. TEST THE WORKFLOW
+#    Repo → Actions tab → CE Scout — Weekly Report → Run workflow
+#    Check the run log; you should receive an email within ~2 minutes.
+#
+# 4. PERSONALIZED GAP ANALYSIS (optional, recommended)
+#    Open index.html → Export JSON → rename file to ce-data.json →
+#    commit it to this repo. The script reads it automatically each week.

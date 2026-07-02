@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CE Tracker</title>
+<style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e0e3e8;
+  --text: #1a1d23;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --primary-h: #1d4ed8;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warn-bg: #fffbeb;
+  --warn-text: #92400e;
+  --pass-bg: #f0fdf4;
+  --fail-bg: #fef2f2;
+  --r: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+/* Header */
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 200; box-shadow: var(--shadow); }
+header h1 { font-size: 16px; font-weight: 700; flex: 1; letter-spacing: -.01em; }
+header h1 span { font-weight: 400; color: var(--muted); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; border-radius: 6px; border: 1px solid transparent; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s, border-color .12s; font-family: inherit; }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-h); border-color: var(--primary-h); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-ghost:hover { background: var(--bg); }
+.btn-sm { padding: 3px 9px; font-size: 12px; }
+.btn-icon { background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 3px 6px; border-radius: 4px; font-size: 15px; }
+.btn-icon:hover { background: var(--fail-bg); color: var(--danger); }
+
+/* Layout */
+main { max-width: 1180px; margin: 0 auto; padding: 24px 20px; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 12px; }
+
+/* Dashboard */
+.dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+@media (max-width: 720px) { .dashboard { grid-template-columns: 1fr; } }
+.state-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; box-shadow: var(--shadow); }
+.card-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+.card-title { font-size: 16px; font-weight: 700; }
+.card-cycle { font-size: 11px; color: var(--muted); }
+
+/* Progress */
+.prog-wrap { margin-bottom: 14px; }
+.prog-top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+.prog-bar { height: 7px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.prog-fill { height: 100%; border-radius: 4px; background: var(--primary); transition: width .3s; }
+.prog-fill.done { background: var(--success); }
+
+/* Requirement rows */
+.reqs { display: flex; flex-direction: column; gap: 5px; }
+.req { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+.req.pass { background: var(--pass-bg); }
+.req.fail { background: var(--fail-bg); }
+.req.warn { background: var(--warn-bg); }
+.req-icon { font-size: 13px; flex-shrink: 0; width: 16px; text-align: center; }
+.req-label { flex: 1; }
+.req-val { font-weight: 600; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Year cells */
+.year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.year-cell { text-align: center; padding: 7px 4px; border-radius: 6px; }
+.year-cell .y-label { font-size: 11px; font-weight: 700; display: block; margin-bottom: 1px; }
+.year-cell .y-hrs { font-size: 15px; font-weight: 700; display: block; }
+.year-cell .y-req { font-size: 10px; display: block; margin-top: 1px; opacity: .8; }
+
+/* Cap bars */
+.cap-section { margin-top: 12px; }
+.cap-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 7px; }
+.cap-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.cap-name { width: 110px; font-size: 12px; flex-shrink: 0; }
+.cap-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; border: 1px solid var(--border); overflow: hidden; }
+.cap-bar-fill { height: 100%; border-radius: 3px; background: var(--primary); }
+.cap-bar-fill.warn { background: #f59e0b; }
+.cap-bar-fill.over { background: var(--danger); }
+.cap-num { width: 46px; text-align: right; font-size: 12px; font-weight: 600; }
+.cap-num.warn { color: var(--warn-text); }
+.cap-num.over { color: var(--danger); }
+
+/* Entries */
+.entries-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.entries-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.entries-head h2 { font-size: 14px; font-weight: 600; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th { padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--border); background: #f9fafb; text-align: left; cursor: pointer; user-select: none; white-space: nowrap; }
+thead th:hover { background: #f1f3f5; }
+.sort-arr { opacity: .5; margin-left: 3px; }
+tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #fafbfc; }
+.td-title { max-width: 220px; font-weight: 500; }
+.td-title small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.td-hours { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.td-cert { max-width: 140px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.td-actions { white-space: nowrap; }
+.empty-msg { padding: 56px 24px; text-align: center; color: var(--muted); }
+.empty-msg strong { display: block; font-size: 15px; margin-bottom: 4px; color: var(--text); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.b-live    { background: #dbeafe; color: #1e40af; }
+.b-virtual { background: #ede9fe; color: #5b21b6; }
+.b-self    { background: #f1f5f9; color: #475569; }
+.b-coursework   { background: #e0e7ff; color: #3730a3; }
+.b-ethics       { background: #fef3c7; color: #78350f; }
+.b-suicide      { background: #fee2e2; color: #991b1b; }
+.b-presenting   { background: #d1fae5; color: #065f46; }
+.b-consultation { background: #fce7f3; color: #9d174d; }
+.b-other        { background: #f1f5f9; color: #475569; }
+.state-pip { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; margin-right: 3px; letter-spacing: .04em; }
+.pip-tn { background: #fef3c7; color: #78350f; }
+.pip-co { background: #dbeafe; color: #1e40af; }
+
+/* Modal */
+.overlay { position: fixed; inset: 0; background: rgba(15,20,30,.45); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 16px; }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: var(--r); box-shadow: 0 20px 60px rgba(0,0,0,.25); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; }
+.modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-head h3 { font-size: 15px; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.modal-close:hover { background: var(--bg); }
+.modal-body { padding: 20px; }
+.modal-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Form */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+.fg.full { grid-column: 1 / -1; }
+.fg label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.fg input, .fg select, .fg textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); }
+.fg input:focus, .fg select:focus, .fg textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.fg textarea { resize: vertical; min-height: 56px; }
+.fg .hint { font-size: 11px; color: var(--muted); }
+.checks { display: flex; gap: 18px; }
+.check-label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.check-label input { width: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CE Tracker <span>/ Therapist</span></h1>
+  <button class="btn btn-ghost" onclick="triggerImport()">&#8593; Import JSON</button>
+  <button class="btn btn-ghost" onclick="exportJSON()">&#8595; Export JSON</button>
+  <button class="btn btn-primary" onclick="auditReport()">Audit Report</button>
+</header>
+
+<main>
+  <div class="section-label">License Dashboard</div>
+  <div class="dashboard">
+    <div class="state-card" id="tn-card"></div>
+    <div class="state-card" id="co-card"></div>
+  </div>
+  <div class="entries-card">
+    <div class="entries-head">
+      <h2>CE Entries</h2>
+      <button class="btn btn-primary btn-sm" onclick="openModal()">+ Add Entry</button>
+    </div>
+    <div class="tbl-wrap" id="tbl-wrap"></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Add CE Entry</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg"><label>Date Completed</label><input type="date" id="f-date"></div>
+        <div class="fg"><label>Hours</label><input type="number" id="f-hours" step="0.5" min="0.5" placeholder="e.g. 3"></div>
+        <div class="fg full"><label>Activity Title</label><input type="text" id="f-title" placeholder="e.g. Advanced Trauma-Informed Care"></div>
+        <div class="fg"><label>Provider</label><input type="text" id="f-provider" placeholder="e.g. PESI"></div>
+        <div class="fg"><label>NBCC / Approval #</label><input type="text" id="f-approval" placeholder="e.g. NBCC-12345"></div>
+        <div class="fg">
+          <label>Format</label>
+          <select id="f-format">
+            <option value="live-inperson">Live In-Person</option>
+            <option value="live-virtual">Live Virtual</option>
+            <option value="self-paced">Self-Paced</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Category</label>
+          <select id="f-category">
+            <option value="coursework">Coursework</option>
+            <option value="ethics">Ethics</option>
+            <option value="suicide-prevention">Suicide Prevention</option>
+            <option value="presenting">Presenting</option>
+            <option value="consultation">Consultation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="fg full">
+          <label>Certificate File / Location</label>
+          <input type="text" id="f-cert" placeholder="e.g. ~/Documents/CEs/2026/pesi-cbt-cert.pdf">
+          <span class="hint">Filename or path where the certificate is stored</span>
+        </div>
+        <div class="fg full">
+          <label>Applies To</label>
+          <div class="checks">
+            <label class="check-label"><input type="checkbox" id="f-tn" checked> Tennessee LPC/MHSP</label>
+            <label class="check-label"><input type="checkbox" id="f-co" checked> Colorado LPC</label>
+          </div>
+        </div>
+        <div class="fg full"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Any additional details…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-input" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<script>
+let db = { entries: [] };
+let editId = null;
+let sortCol = 'date';
+let sortAsc = true;
+
+const TN_START = '2026-08-01';
+const TN_END   = '2028-08-31';
+const CO_START = '2025-07-01';
+const CO_END   = '2027-06-30';
+
+const FORMATS = { 'live-inperson':'Live In-Person', 'live-virtual':'Live Virtual', 'self-paced':'Self-Paced' };
+const CATS = { 'coursework':'Coursework', 'ethics':'Ethics', 'suicide-prevention':'Suicide Prevention', 'presenting':'Presenting', 'consultation':'Consultation', 'other':'Other' };
+const FORMAT_BADGE = { 'live-inperson':['b-live','Live In-Person'], 'live-virtual':['b-virtual','Live Virtual'], 'self-paced':['b-self','Self-Paced'] };
+const CAT_BADGE = { 'coursework':'b-coursework', 'ethics':'b-ethics', 'suicide-prevention':'b-suicide', 'presenting':'b-presenting', 'consultation':'b-consultation', 'other':'b-other' };
+
+function inCycle(date, start, end) { return date >= start && date <= end; }
+function sum(arr) { return arr.reduce((s,e) => s + e.hours, 0); }
+function n(v) { return Number.isInteger(v) ? v : parseFloat(v.toFixed(1)); }
+function h(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function computeTN() {
+  const entries = db.entries.filter(e => e.states.includes('TN') && inCycle(e.date,TN_START,TN_END));
+  const total=sum(entries), ethics=sum(entries.filter(e=>e.category==='ethics'));
+  const suicide=sum(entries.filter(e=>e.category==='suicide-prevention'));
+  const live=sum(entries.filter(e=>e.format==='live-inperson'||e.format==='live-virtual'));
+  const byYear={};
+  for(const y of [2026,2027,2028]) byYear[y]=sum(entries.filter(e=>new Date(e.date+'T00:00:00').getFullYear()===y));
+  return {total,ethics,suicide,live,byYear,entries};
+}
+
+function computeCO() {
+  const entries=db.entries.filter(e=>e.states.includes('CO')&&inCycle(e.date,CO_START,CO_END));
+  const total=sum(entries), ethics=sum(entries.filter(e=>e.category==='ethics'));
+  const byCat={};
+  for(const cat of Object.keys(CATS)) byCat[cat]=sum(entries.filter(e=>e.category===cat));
+  return {total,ethics,byCat,entries};
+}
+
+function progBar(cur,req) {
+  const pct=Math.min(100,(cur/req)*100), done=cur>=req;
+  return `<div class="prog-wrap"><div class="prog-top"><span>Total Hours</span><span>${n(cur)} / ${req}</span></div><div class="prog-bar"><div class="prog-fill${done?' done':''}" style="width:${pct}%"></div></div></div>`;
+}
+
+function reqRow(label,cur,req,mode) {
+  let cls,icon,color;
+  if(mode==='max') {
+    const over=cur>req, warn=!over&&cur>=req*0.75;
+    cls=over?'fail':warn?'warn':'pass'; icon=over?'✗':warn?'⚠':'✓'; color=over?'#dc2626':warn?'#92400e':'#15803d';
+  } else {
+    const ok=cur>=req;
+    cls=ok?'pass':'fail'; icon=ok?'✓':'✗'; color=ok?'#15803d':'#dc2626';
+  }
+  return `<div class="req ${cls}"><span class="req-icon" style="color:${color}">${icon}</span><span class="req-label">${label}</span><span class="req-val">${n(cur)} / ${req}${mode==='max'?' max':''}</span></div>`;
+}
+
+function renderTN() {
+  const {total,ethics,suicide,live,byYear}=computeTN();
+  const yearCells=[2026,2027,2028].map(y=>{
+    const hrs=byYear[y]||0, ok=hrs>=10;
+    return `<div class="year-cell" style="background:${ok?'#f0fdf4':'#fef2f2'}"><span class="y-label" style="color:${ok?'#15803d':'#dc2626'}">${y}</span><span class="y-hrs" style="color:${ok?'#15803d':'#dc2626'}">${n(hrs)}</span><span class="y-req" style="color:${ok?'#15803d':'#dc2626'}">${ok?'✓':'✗'} / 10</span></div>`;
+  }).join('');
+  document.getElementById('tn-card').innerHTML=`<div class="card-head"><span class="card-title">Tennessee</span><span class="card-cycle">LPC/MHSP &middot; Aug 2026 &ndash; Aug 2028</span></div>${progBar(total,20)}<div class="reqs">${reqRow('Total Hours',total,20,'min')}${reqRow('Ethics Hours',ethics,3,'min')}${reqRow('Suicide Prevention (4-yr span)',suicide,2,'min')}${reqRow('Live / Interactive Hours',live,10,'min')}</div><div style="margin-top:10px"><div class="cap-head">Hours per Calendar Year (&ge; 10 each)</div><div class="year-grid">${yearCells}</div></div>`;
+}
+
+function renderCO() {
+  const {total,ethics,byCat}=computeCO();
+  const capRows=Object.entries(byCat).filter(([,v])=>v>0&&v>=15).map(([cat,hrs])=>reqRow(`Cap &mdash; ${CATS[cat]}`,hrs,20,'max')).join('');
+  const bars=Object.entries(byCat).filter(([,v])=>v>0).map(([cat,hrs])=>{
+    const pct=Math.min(100,(hrs/20)*100), over=hrs>20, warn=!over&&hrs>=15;
+    return `<div class="cap-row"><span class="cap-name">${CATS[cat]}</span><div class="cap-bar-bg"><div class="cap-bar-fill ${over?'over':warn?'warn':''}" style="width:${pct}%"></div></div><span class="cap-num ${over?'over':warn?'warn':''}">${n(hrs)}/20</span></div>`;
+  }).join('');
+  document.getElementById('co-card').innerHTML=`<div class="card-head"><span class="card-title">Colorado</span><span class="card-cycle">LPC &middot; cycle ends Jun 30, 2027</span></div>${progBar(total,40)}<div class="reqs">${reqRow('Total Hours',total,40,'min')}${reqRow('Ethics Hours',ethics,6,'min')}${capRows}</div>${bars?`<div class="cap-section"><div class="cap-head">Category Hours (20 hr cap each)</div>${bars}</div>`:''}}`;
+}
+
+function renderTable() {
+  const wrap=document.getElementById('tbl-wrap');
+  if(!db.entries.length) { wrap.innerHTML='<div class="empty-msg"><strong>No CE entries yet</strong>Click "+  Add Entry" to log your first continuing education activity.</div>'; return; }
+  const rows=[...db.entries].sort((a,b)=>{ let av=a[sortCol],bv=b[sortCol]; if(typeof av==='string'){av=av.toLowerCase();bv=bv.toLowerCase();} const c=av<bv?-1:av>bv?1:0; return sortAsc?c:-c; });
+  const cols=[{key:'date',label:'Date'},{key:'title',label:'Title'},{key:'provider',label:'Provider'},{key:'hours',label:'Hours'},{key:'format',label:'Format'},{key:'category',label:'Category'},{key:null,label:'States'},{key:null,label:'Certificate'},{key:null,label:''}];
+  const ths=cols.map(c=>{ if(!c.key) return `<th>${c.label}</th>`; const arr=sortCol===c.key?(sortAsc?'▲':'▼'):''; return `<th onclick="setSort('${c.key}')">${c.label}<span class="sort-arr">${arr}</span></th>`; }).join('');
+  const trs=rows.map(e=>{ const [bfmt,bfmtLabel]=FORMAT_BADGE[e.format]||['b-self',e.format]; const bcat=CAT_BADGE[e.category]||'b-other'; const pips=e.states.map(s=>`<span class="state-pip pip-${s.toLowerCase()}">${s}</span>`).join(''); return `<tr><td>${e.date}</td><td class="td-title"><span title="${h(e.notes)}">${h(e.title)}</span>${e.approvalNumber?`<small>${h(e.approvalNumber)}</small>`:''}</td><td>${h(e.provider)}</td><td class="td-hours">${n(e.hours)}</td><td><span class="badge ${bfmt}">${bfmtLabel}</span></td><td><span class="badge ${bcat}">${CATS[e.category]||e.category}</span></td><td>${pips}</td><td class="td-cert" title="${h(e.certificateNote)}">${h(e.certificateNote)||'<span style="color:var(--muted)">—</span>'}</td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="openModal('${e.id}')">Edit</button><button class="btn-icon" onclick="del('${e.id}')" title="Delete">&times;</button></td></tr>`; }).join('');
+  wrap.innerHTML=`<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function setSort(col) { if(sortCol===col) sortAsc=!sortAsc; else{sortCol=col;sortAsc=true;} renderTable(); }
+
+function openModal(id) {
+  editId=id||null;
+  document.getElementById('modal-title').textContent=id?'Edit CE Entry':'Add CE Entry';
+  const e=id?db.entries.find(x=>x.id===id):null;
+  setF('f-date',e?e.date:''); setF('f-hours',e?e.hours:''); setF('f-title',e?e.title:'');
+  setF('f-provider',e?e.provider:''); setF('f-approval',e?e.approvalNumber:'');
+  setF('f-format',e?e.format:'live-inperson'); setF('f-category',e?e.category:'coursework');
+  setF('f-cert',e?e.certificateNote:''); setF('f-notes',e?e.notes:'');
+  document.getElementById('f-tn').checked=e?e.states.includes('TN'):true;
+  document.getElementById('f-co').checked=e?e.states.includes('CO'):true;
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('f-date').focus();
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('open'); editId=null; }
+function overlayClick(evt) { if(evt.target===document.getElementById('overlay')) closeModal(); }
+function setF(id,v) { const el=document.getElementById(id); if(el) el.value=v??''; }
+
+function saveEntry() {
+  const date=document.getElementById('f-date').value;
+  const title=document.getElementById('f-title').value.trim();
+  const hours=parseFloat(document.getElementById('f-hours').value);
+  if(!date){alert('Please enter a date.');return;}
+  if(!title){alert('Please enter a title.');return;}
+  if(!hours||hours<=0){alert('Please enter valid hours (> 0).');return;}
+  const states=[];
+  if(document.getElementById('f-tn').checked) states.push('TN');
+  if(document.getElementById('f-co').checked) states.push('CO');
+  if(!states.length){alert('Select at least one state.');return;}
+  const entry={id:editId||uid(),date,title,provider:document.getElementById('f-provider').value.trim(),approvalNumber:document.getElementById('f-approval').value.trim(),hours,format:document.getElementById('f-format').value,category:document.getElementById('f-category').value,certificateNote:document.getElementById('f-cert').value.trim(),notes:document.getElementById('f-notes').value.trim(),states};
+  if(editId){const i=db.entries.findIndex(x=>x.id===editId);db.entries[i]=entry;}else{db.entries.push(entry);}
+  closeModal(); render();
+}
+
+function del(id) { const e=db.entries.find(x=>x.id===id); if(!confirm(`Delete "${e.title}"?`)) return; db.entries=db.entries.filter(x=>x.id!==id); render(); }
+
+function exportJSON() {
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=Object.assign(document.createElement('a'),{href:url,download:`ce-tracker-${today()}.json`});
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function triggerImport() { document.getElementById('import-input').click(); }
+
+function handleImport(evt) {
+  const file=evt.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const imported=JSON.parse(e.target.result);
+      if(!Array.isArray(imported.entries)) throw new Error();
+      if(!confirm(`Replace all current data with ${imported.entries.length} imported entries?`)) return;
+      db=imported; render();
+    }catch{alert('Invalid file. Please import a JSON file exported from this app.');}
+    evt.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function auditReport() {
+  const tn=computeTN(), co=computeCO();
+  const tnE=[...tn.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  const coE=[...co.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  function entryTable(entries) {
+    if(!entries.length) return '<p style="color:#666;font-style:italic;margin:8px 0">No entries in this cycle.</p>';
+    const rows=entries.map(e=>`<tr><td>${e.date}</td><td>${h(e.title)}</td><td>${h(e.provider)}</td><td>${h(e.approvalNumber)}</td><td>${FORMATS[e.format]||e.format}</td><td>${CATS[e.category]||e.category}</td><td style="text-align:right;font-weight:600">${n(e.hours)}</td><td style="font-size:11px">${h(e.certificateNote)||'—'}</td></tr>`).join('');
+    return `<table class="log-table"><thead><tr><th>Date</th><th>Title</th><th>Provider</th><th>Approval #</th><th>Format</th><th>Category</th><th>Hours</th><th>Certificate</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function check(label,pass,detail) { return `<div class="ci ${pass?'ci-pass':'ci-fail'}"><span class="ci-icon">${pass?'✓':'✗'}</span><span>${label}${detail?` &mdash; <strong>${detail}</strong>`:''}</span></div>`; }
+  const tnYears=[2026,2027,2028].map(y=>{const hrs=tn.byYear[y]||0;return check(`Calendar year ${y}: &ge; 10 hrs required`,hrs>=10,`${n(hrs)} hrs`);}).join('');
+  const coCapChecks=Object.entries(co.byCat).filter(([,v])=>v>0).map(([cat,hrs])=>check(`Category cap &mdash; ${CATS[cat]}: &le; 20 hrs`,hrs<=20,`${n(hrs)} hrs`)).join('');
+  const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const dualCount=db.entries.filter(e=>e.states.includes('TN')&&e.states.includes('CO')).length;
+  const reportHtml=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>CE Audit Report</title><style>body{font-family:Georgia,serif;max-width:860px;margin:32px auto;padding:0 24px;color:#111;font-size:13px;line-height:1.55}h1{font-size:22px;margin-bottom:2px}.meta{color:#555;font-size:12px;margin-bottom:28px}h2{font-size:16px;border-bottom:2px solid #111;padding-bottom:4px;margin:32px 0 6px}h3{font-size:13px;font-weight:700;margin:18px 0 8px;color:#333}.cycle-info{font-size:12px;color:#555;margin-bottom:14px}.totals{display:flex;gap:20px;margin-bottom:16px}.tot-box{border:1px solid #ddd;border-radius:4px;padding:10px 16px;text-align:center;min-width:110px}.tot-box .v{font-size:26px;font-weight:700;font-family:-apple-system,sans-serif}.tot-box .l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#555;margin-top:2px}.ci{display:flex;align-items:baseline;gap:7px;padding:4px 0;font-family:-apple-system,sans-serif;font-size:13px}.ci-icon{font-size:13px;flex-shrink:0}.ci-pass .ci-icon{color:#16a34a}.ci-fail .ci-icon{color:#dc2626}.ci-pass{color:#166534}.ci-fail{color:#991b1b}.checklist{background:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;padding:10px 14px;margin-bottom:16px}.log-table{width:100%;border-collapse:collapse;font-size:11.5px;font-family:-apple-system,sans-serif;margin-top:6px}.log-table th{border:1px solid #ccc;padding:5px 7px;background:#f3f3f3;font-size:10px;text-transform:uppercase;letter-spacing:.04em;text-align:left}.log-table td{border:1px solid #ddd;padding:5px 7px;vertical-align:top}.log-table tr:nth-child(even) td{background:#fafafa}.dual-note{font-size:11px;color:#666;font-style:italic;margin-top:4px}.footer{margin-top:40px;padding-top:10px;border-top:1px solid #ddd;font-size:11px;color:#888}.print-btn{margin-bottom:20px;padding:8px 18px;font-size:13px;cursor:pointer;font-family:-apple-system,sans-serif}@media print{.print-btn{display:none}body{margin:0}}</style></head><body><h1>Continuing Education Audit Report</h1><p class="meta">Generated ${now} &nbsp;&middot;&nbsp; For license compliance review</p><button class="print-btn" onclick="window.print()">Print / Save as PDF</button>${dualCount?`<p class="dual-note">${dualCount} entry/entries count toward both states and appear in both sections below.</p>`:''}<h2>Tennessee LPC / MHSP</h2><p class="cycle-info">License Cycle: August 1, 2026 &ndash; August 31, 2028</p><div class="totals"><div class="tot-box"><div class="v">${n(tn.total)}</div><div class="l">Total hrs (of 20)</div></div><div class="tot-box"><div class="v">${n(tn.ethics)}</div><div class="l">Ethics hrs (of 3)</div></div><div class="tot-box"><div class="v">${n(tn.suicide)}</div><div class="l">Suicide prev. (of 2)</div></div><div class="tot-box"><div class="v">${n(tn.live)}</div><div class="l">Live/interactive (of 10)</div></div><div class="tot-box"><div class="v">${tnE.length}</div><div class="l">Total entries</div></div></div><h3>Compliance Checklist</h3><div class="checklist">${check('Total hours &ge; 20',tn.total>=20,`${n(tn.total)} hrs`)}${check('Ethics hours &ge; 3',tn.ethics>=3,`${n(tn.ethics)} hrs`)}${check('Suicide prevention &ge; 2 hrs (4-yr span)',tn.suicide>=2,`${n(tn.suicide)} hrs`)}${check('Live / interactive hours &ge; 10',tn.live>=10,`${n(tn.live)} hrs`)}${tnYears}</div><h3>CE Log (sorted by date)</h3>${entryTable(tnE)}<h2>Colorado LPC</h2><p class="cycle-info">License Cycle: July 1, 2025 &ndash; June 30, 2027</p><div class="totals"><div class="tot-box"><div class="v">${n(co.total)}</div><div class="l">Total hrs (of 40)</div></div><div class="tot-box"><div class="v">${n(co.ethics)}</div><div class="l">Ethics hrs (of 6)</div></div><div class="tot-box"><div class="v">${coE.length}</div><div class="l">Total entries</div></div></div><h3>Compliance Checklist</h3><div class="checklist">${check('Total hours &ge; 40',co.total>=40,`${n(co.total)} hrs`)}${check('Ethics hours &ge; 6',co.ethics>=6,`${n(co.ethics)} hrs`)}${coCapChecks||'<div class="ci ci-pass"><span class="ci-icon">✓</span><span>All category caps within 20 hr limit</span></div>'}</div><h3>CE Log (sorted by date)</h3>${entryTable(coE)}<div class="footer">Generated by CE Tracker &middot; Verify all entries against original certificates before submission to the board.</div></body></html>`;
+  const win=window.open('','_blank','width=920,height=800');
+  win.document.write(reportHtml);
+  win.document.close();
+}
+
+function uid() { return crypto.randomUUID(); }
+function today() { return new Date().toISOString().slice(0,10); }
+function render() { renderTN(); renderCO(); renderTable(); }
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// Pre-fill form from email "Log in Tracker" link
+// URL params: ?log=1&title=...&provider=...&hours=...&format=...&category=...&approval=...
+(function () {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('log') !== '1') return;
+  setTimeout(() => {
+    document.getElementById('f-title').value    = decodeURIComponent(p.get('title')    || '');
+    document.getElementById('f-provider').value = decodeURIComponent(p.get('provider') || '');
+    document.getElementById('f-hours').value    = p.get('hours') || '';
+    document.getElementById('f-approval').value = decodeURIComponent(p.get('approval') || '');
+    const fmt = p.get('format');
+    if (fmt && document.querySelector(`#f-format option[value="${fmt}"]`)) document.getElementById('f-format').value = fmt;
+    const cat = p.get('category');
+    if (cat && document.querySelector(`#f-category option[value="${cat}"]`)) document.getElementById('f-category').value = cat;
+    document.getElementById('modal-title').textContent = 'Log CE from Email';
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('f-date').focus();
+  }, 150);
+}());
+
+render();
+</script>
+</body>
+</html>
