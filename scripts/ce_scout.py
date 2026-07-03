@@ -218,9 +218,21 @@ def analyze_with_claude(search_results, gaps, today_str):
     )
     # content may include ThinkingBlock(s) before the TextBlock; find the first text block
     raw = next(block.text for block in msg.content if hasattr(block, 'text')).strip()
+    # strip markdown fences if present
     raw = re.sub(r'^```(?:json)?\s*', '', raw)
     raw = re.sub(r'\s*```$', '', raw)
-    result = json.loads(raw)
+    # extract just the JSON array — guards against surrounding prose or truncated output
+    start = raw.find('[')
+    end   = raw.rfind(']')
+    if start == -1 or end == -1:
+        print(f'No JSON array in Claude response:\n{raw[:500]}', file=sys.stderr)
+        return []
+    raw = raw[start:end + 1]
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f'JSON parse error: {e}\nExtracted: {raw[:500]}', file=sys.stderr)
+        return []
     return result if isinstance(result, list) else []
 
 # ── Email Builder ────────────────────────────────────────────────────────────────────────────────────
