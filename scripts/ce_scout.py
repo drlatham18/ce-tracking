@@ -210,14 +210,24 @@ def analyze_with_claude(search_results, gaps, today_str):
     user_msg = f'Today: {today_str}\n{gap_block}\nSEARCH RESULTS:\n{results_block}'
 
     client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+    # max_tokens must cover thinking output plus the JSON answer, or the
+    # response gets truncated mid-thought and contains no text block at all
     msg = client.messages.create(
         model='claude-sonnet-5',
-        max_tokens=4096,
+        max_tokens=16000,
         system=SYSTEM_PROMPT,
         messages=[{'role': 'user', 'content': user_msg}],
     )
-    # content may include ThinkingBlock(s) before the TextBlock; find the first text block
-    raw = next(block.text for block in msg.content if hasattr(block, 'text')).strip()
+    if msg.stop_reason == 'max_tokens':
+        print('Warning: Claude response hit max_tokens and may be truncated', file=sys.stderr)
+    # content may include ThinkingBlock(s); join every text block present
+    raw = ''.join(
+        block.text for block in msg.content
+        if getattr(block, 'type', '') == 'text'
+    ).strip()
+    if not raw:
+        print(f'Claude returned no text blocks (stop_reason={msg.stop_reason})', file=sys.stderr)
+        return []
     # strip markdown fences if present
     raw = re.sub(r'^```(?:json)?\s*', '', raw)
     raw = re.sub(r'\s*```$', '', raw)
