@@ -31,11 +31,13 @@ import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────────────────────
 
-ANTHROPIC_KEY  = os.environ.get('ANTHROPIC_API_KEY', '')
-BRAVE_KEY      = os.environ.get('BRAVE_API_KEY', '')
-GMAIL_USER     = os.environ.get('GMAIL_USER', '')
-GMAIL_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
-RECIPIENT      = os.environ.get('RECIPIENT_EMAIL', GMAIL_USER)
+ANTHROPIC_KEY  = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+BRAVE_KEY      = os.environ.get('BRAVE_API_KEY', '').strip()
+GMAIL_USER     = os.environ.get('GMAIL_USER', '').strip()
+# Google displays app passwords as "abcd efgh ijkl mnop" — strip any spaces
+# that were copied along with the secret, plus stray whitespace/newlines
+GMAIL_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '').strip().replace(' ', '')
+RECIPIENT      = os.environ.get('RECIPIENT_EMAIL', GMAIL_USER).strip()
 TRACKER_BASE   = os.environ.get('TRACKER_URL', 'https://drlatham18.github.io/ce-tracking').rstrip('/')
 
 REPO_ROOT    = os.path.join(os.path.dirname(__file__), '..')
@@ -462,7 +464,16 @@ def send_email(html_body, subject):
     msg['To']      = RECIPIENT
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(GMAIL_USER, GMAIL_PASSWORD)
+        try:
+            smtp.login(GMAIL_USER, GMAIL_PASSWORD)
+        except smtplib.SMTPAuthenticationError as e:
+            raise RuntimeError(
+                'Gmail rejected the login (535 BadCredentials). The GMAIL_APP_PASSWORD '
+                'secret is invalid or was revoked — app passwords are revoked automatically '
+                'when the Google account password changes. Fix: create a new app password at '
+                'https://myaccount.google.com/apppasswords and update the GMAIL_APP_PASSWORD '
+                'repository secret (Settings → Secrets and variables → Actions).'
+            ) from e
         smtp.sendmail(GMAIL_USER, RECIPIENT, msg.as_string())
     print(f'Email sent to {RECIPIENT}')
 
@@ -495,6 +506,8 @@ def main():
     gaps = compute_gaps(data) if data else None
     if gaps:
         print(f'Loaded {len(data["entries"])} entries — TN gap: {gaps["TN"]["total_gap"]}h, CO gap: {gaps["CO"]["total_gap"]}h')
+    elif os.path.exists(CE_DATA_PATH):
+        print('ce-data.json has no entries yet — running without personalized gap analysis')
     else:
         print('No ce-data.json — running without personalized gap analysis')
 
@@ -516,9 +529,13 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
+    except Exception as e:
         import traceback
         tb = traceback.format_exc()
         print(tb, file=sys.stderr)
+        # Surface the reason in the Actions run summary — the error email
+        # can't be delivered when Gmail auth itself is what's broken
+        first_line = str(e).splitlines()[0] if str(e) else type(e).__name__
+        print(f'::error::CE Scout failed: {first_line}')
         send_error_email(tb)
         sys.exit(1)
